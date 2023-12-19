@@ -13,7 +13,7 @@ pub fn create( infra_object: Infra, conn: &mut PgConnection ) -> Option<Infra> {
     match result {
         Ok(infra_object) => Some(infra_object),
         Err(error) => {
-            println!( "Error creating new Infra object: {error}" );  
+            println!( "Error creating new Infra object: {error}" );
             None
         }
     }
@@ -44,7 +44,7 @@ pub fn get_all( conn: &mut PgConnection ) -> Option<Vec<Infra>> {
     }
 }
 
-pub fn update( infra_name: &str, infra_modifier_param: Option<f64>, price_param: Option<i32>, conn: &mut PgConnection ) -> Option<Infra> {
+pub fn update( infra_name: &str, infra_modifier_param: Option<f32>, price_param: Option<i32>, conn: &mut PgConnection ) -> Option<Infra> {
     
     match &mut get_one(infra_name, conn) {
 

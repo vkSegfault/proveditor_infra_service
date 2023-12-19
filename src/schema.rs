@@ -61,7 +61,7 @@ diesel::table! {
     infra (name) {
         #[max_length = 255]
         name -> Varchar,
-        infra_modifier -> Nullable<Float8>,
+        infra_modifier -> Nullable<Float4>,
         price -> Nullable<Int4>,
     }
 }

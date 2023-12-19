@@ -14,7 +14,7 @@ pub struct Infra {
     pub name: String,
 
     #[schema(example = 0.35)]
-    pub infra_modifier: Option<f64>,
+    pub infra_modifier: Option<f32>,
 
     #[schema(example = 2000)]
     pub price: Option<i32>

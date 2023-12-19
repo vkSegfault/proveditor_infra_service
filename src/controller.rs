@@ -1,9 +1,10 @@
 use axum::body::Body;
 use axum::Router;
 use axum::extract::{Query, Path};
+use axum::middleware::{Next, from_fn};
 use axum::response::{Html, IntoResponse, Response, Json};
 use axum::routing::get_service;
-use axum::http::{StatusCode, header};
+use axum::http::{StatusCode, header, Request};
 use tower_http::services::ServeDir;
 use tower_http::cors::{Any, CorsLayer};
 use crate::model::Infra;
@@ -42,7 +43,7 @@ pub fn create_routes() -> Router {
 
     // DELETE
     let infra_router = infra_router.route("/api/v1/infra/:name", axum::routing::delete( delete_handler ) );
-    
+
     println!( "Endpoints ready" );
 
     Router::new()
@@ -52,6 +53,7 @@ pub fn create_routes() -> Router {
     .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))
     .merge(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))
     .layer(cors)
+    .layer(from_fn(logging_middleware))
     .fallback_service( serve_static_route() )  // if user provided endpoint that deosn't exists fallback to this static resource
 }
 
@@ -78,6 +80,7 @@ fn serve_static_route() -> Router {
 async fn post_handler( Json(payload): Json<Infra> ) -> impl IntoResponse {
     println!( "POST request body: {payload:?}" );
     let conn = &mut crate::repository::connect_psql("user", "pass", "localhost", "5432", "mydb");
+    
     let res = crate::service::create( payload, conn );
 
     match res {
@@ -159,7 +162,7 @@ async fn put_handler( Query(params): Query<Infra> ) -> impl IntoResponse {
         Some(value) => {
             ( StatusCode::OK, [(header::CONTENT_TYPE, "application/json")], Json( format!("Updated {0} to {value:?}", params.name) ) )
         },
-        None => ( StatusCode::NOT_FOUND, [(header::CONTENT_TYPE, "application/json")], Json(format!("Can't update >> {0} << object that doesn't exists", params.name)) )
+        None => ( StatusCode::NOT_FOUND, [(header::CONTENT_TYPE, "application/json")], Json(format!("Can't update >> {0} << because it doesn't exists", params.name)) )
     }
 
 }
@@ -183,4 +186,11 @@ async fn delete_handler( Path(name): Path<String> ) -> impl IntoResponse {
         Some(_) => ( StatusCode::OK, [(header::CONTENT_TYPE, "application/json")], Json( format!("Deleted {name}") ) ),
         None        => ( StatusCode::NOT_FOUND, [(header::CONTENT_TYPE, "application/json")], Json( format!("Can't delete object {name} because it doesn't exists") ) )
     }
+}
+
+
+// LOGGING
+async fn logging_middleware(req: Request<Body>, next: Next<Body>) -> Response {
+    println!( "### LOGGER ### Received a {} request to {}", req.method(), req.uri() );
+    next.run(req).await
 }
