@@ -61,7 +61,7 @@ pub fn create_routes() -> Router {
 fn serve_static_route() -> Router {
     // STATIC RESOURCE EXAMPLE: http://127.0.0.1:8080/src/main.rs - we can point to any static resource like .jpg or .txt
 
-    println!( "Fallback main page" );
+    println!( "Serve main route '/' as fallback page" );
 
     Router::new().nest_service("/", get_service(ServeDir::new( "./" )))
 }
