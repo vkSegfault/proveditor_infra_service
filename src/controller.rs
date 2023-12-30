@@ -1,14 +1,14 @@
 use axum::body::Body;
-use axum::Router;
+use axum::{Router, middleware};
 use axum::extract::{Query, Path};
 use axum::middleware::{Next, from_fn};
 use axum::response::{Html, IntoResponse, Response, Json};
 use axum::routing::get_service;
 use axum::http::{StatusCode, header, Request};
+use tower_cookies::CookieManagerLayer;
 use tower_http::services::ServeDir;
 use tower_http::cors::{Any, CorsLayer};
 use crate::model::Infra;
-use crate::schema::infra;
 use utoipa::{
     openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
     Modify, OpenApi,
@@ -17,6 +17,7 @@ use utoipa_rapidoc::RapiDoc;
 use utoipa_redoc::{Redoc, Servable};
 use utoipa_swagger_ui::SwaggerUi;
 
+pub use crate::error::{Error, Result};
 
 #[derive(OpenApi)]
 #[openapi(paths( post_handler, get_one_handler, get_all_handler, put_handler, delete_handler ), components(schemas( Infra )))]
@@ -47,25 +48,34 @@ pub fn create_routes() -> Router {
     println!( "Endpoints ready" );
 
     Router::new()
-    .merge( infra_router )
-    .merge( crate::auth::crate_login_route() )
-    .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-    .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))
-    .merge(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))
-    .layer(cors)
-    .layer(from_fn(logging_middleware))
-    .fallback_service( serve_static_route() )  // if user provided endpoint that deosn't exists fallback to this static resource
+        .merge( infra_router )
+        .merge( crate::auth::create_auth_routers() )
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))
+        .merge(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))
+        .layer(cors)
+        .layer(from_fn(logging_middleware))
+        .layer(middleware::map_response(main_response_mapper))
+        .layer(CookieManagerLayer::new())  // we can set new cookies anywhere in the code (here we set it up in auth.rs)
+        .fallback_service( serve_static_route() )  // if user provided endpoint that deosn't exists fallback to this static resource
+        // ^ layers are executed from bottom to top ^
 }
 
 
 fn serve_static_route() -> Router {
-    // STATIC RESOURCE EXAMPLE: http://127.0.0.1:8080/src/main.rs - we can point to any static resource like .jpg or .txt
+    // STATIC RESOURCE EXAMPLE: http://127.0.0.1:8080/src/main.rs - we can serve any static resource like .jpg or .txt
 
     println!( "Serve main route '/' as fallback page" );
 
     Router::new().nest_service("/", get_service(ServeDir::new( "./" )))
 }
 
+// remake Response on every HTTP request
+async fn main_response_mapper( res: Response ) -> Response {
+    println!("->> {:<12} - main_response_mapper \n", "RES_MAPPER");
+
+    res
+}
 
 // POST
 #[utoipa::path(
@@ -79,7 +89,8 @@ fn serve_static_route() -> Router {
 )]
 async fn post_handler( Json(payload): Json<Infra> ) -> impl IntoResponse {
     println!( "POST request body: {payload:?}" );
-    let conn = &mut crate::repository::connect_psql("user", "pass", "localhost", "5432", "mydb");
+
+    let conn = &mut crate::repository::get_connection();
     
     let res = crate::service::create( payload, conn );
 
@@ -102,7 +113,7 @@ async fn post_handler( Json(payload): Json<Infra> ) -> impl IntoResponse {
 // PATH PARAM EXAMPLE: http://127.0.0.1:8080/api/v1/infra/airport
 async fn get_one_handler( Path(name): Path<String> ) -> impl IntoResponse {
 
-    let conn = &mut crate::repository::connect_psql("user", "pass", "localhost", "5432", "mydb");
+    let conn = &mut crate::repository::get_connection();
     let infra: Option<Infra> = crate::service::get_one( &name, conn);
 
     match infra {
@@ -123,7 +134,7 @@ async fn get_one_handler( Path(name): Path<String> ) -> impl IntoResponse {
 )]
 async fn get_all_handler() -> impl IntoResponse {
 
-    let conn = &mut crate::repository::connect_psql("user", "pass", "localhost", "5432", "mydb");
+    let conn = &mut crate::repository::get_connection();
     let infras: Option<Vec<Infra>> = crate::service::get_all(conn);
 
     match infras {
@@ -155,7 +166,7 @@ async fn get_all_handler() -> impl IntoResponse {
 // QUERY STRING EXAMPLE: http://localhost:8080/api/v1/infra?name=airport&price=2400&infra_modifier=0.3
 async fn put_handler( Query(params): Query<Infra> ) -> impl IntoResponse {
 
-    let conn = &mut crate::repository::connect_psql("user", "pass", "localhost", "5432", "mydb");
+    let conn = &mut crate::repository::get_connection();
     let infra: Option<Infra> = crate::service::update(&params.name, params.infra_modifier, params.price, conn);
 
     match infra {
@@ -179,7 +190,7 @@ async fn put_handler( Query(params): Query<Infra> ) -> impl IntoResponse {
 )]
 async fn delete_handler( Path(name): Path<String> ) -> impl IntoResponse {
 
-    let conn = &mut crate::repository::connect_psql("user", "pass", "localhost", "5432", "mydb");
+    let conn = &mut crate::repository::get_connection();
     let infra: Option<()> = crate::service::delete( &name, conn);
 
     match infra {
