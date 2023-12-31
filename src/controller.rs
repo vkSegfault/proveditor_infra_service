@@ -31,13 +31,16 @@ pub fn create_router() -> Router {
     // CORS
     let cors = CorsLayer::new().allow_origin(Any);
 
+    // route_layer allows to only add our custom middleware for these particulare routes
+    let routes = create_routes().route_layer( middleware::from_fn( crate::auth::mw_require_auth::mw_require_auth ) );
+
     let shared_state = Infra { name: String::from("State"), infra_modifier: Some(6.66), price: Some(666) };
 
     Router::<Infra>::new()
         // .merge( create_routes() )
-        .nest( API_PATH, create_routes() )  // .nest() is like .merge() but with additional prepend
+        .nest( API_PATH, routes )  // .nest() is like .merge() but with additional prepend
         .with_state(shared_state)   // state must be provided just after router that consumes this state and must implement Clone trait
-        .merge( crate::auth::create_auth_routers() )
+        .merge( crate::auth::routes::create_auth_routers() )
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))
         .merge(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))

@@ -4,7 +4,6 @@ use axum::{Json, routing::post, Router};
 use serde_json::{Value, json};
 use tower_cookies::{Cookies, Cookie};
 
-pub const AUTH_TOKEN: &str = "auth-token";
 
 pub fn create_auth_routers() -> Router {
     Router::new()
@@ -22,7 +21,9 @@ async fn api_login( cookies: Cookies, payload: Json<UserPayload> ) -> Result<Jso
     }
 
     // TODO! encode proper cookie
-    cookies.add(Cookie::new(AUTH_TOKEN, "user-1.exp.sign"));
+    // we set cookies if creds are valid from previous step
+    println!( "Adding Auth Cookie..." );
+    cookies.add(Cookie::new(crate::auth::AUTH_TOKEN, "user-1.exp.sign"));
 
     // TODO! set success return body
     let body = Json(json!({
