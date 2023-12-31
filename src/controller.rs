@@ -1,10 +1,11 @@
 use axum::body::Body;
 use axum::{Router, middleware};
-use axum::extract::{Query, Path};
+use axum::extract::{Query, Path, State};
 use axum::middleware::{Next, from_fn};
 use axum::response::{Html, IntoResponse, Response, Json};
 use axum::routing::get_service;
 use axum::http::{StatusCode, header, Request};
+use diesel::PgConnection;
 use tower_cookies::CookieManagerLayer;
 use tower_http::services::ServeDir;
 use tower_http::cors::{Any, CorsLayer};
@@ -23,32 +24,19 @@ pub use crate::error::{Error, Result};
 #[openapi(paths( post_handler, get_one_handler, get_all_handler, put_handler, delete_handler ), components(schemas( Infra )))]
 struct ApiDoc;
 
+const API_PATH: &str = "/api/v1";
 
-pub fn create_routes() -> Router {
-    let infra_router = Router::new();
+pub fn create_router() -> Router {
 
     // CORS
     let cors = CorsLayer::new().allow_origin(Any);
 
-    // POST
-    let infra_router = infra_router.route("/api/v1/infra", axum::routing::post( post_handler ) );
+    let shared_state = Infra { name: String::from("State"), infra_modifier: Some(6.66), price: Some(666) };
 
-    // GET one
-    let infra_router = infra_router.route("/api/v1/infra/:name", axum::routing::get( get_one_handler ) );
-
-    // GET all
-    let infra_router = infra_router.route("/api/v1/infra", axum::routing::get( get_all_handler ) );
-
-    // PUT
-    let infra_router = infra_router.route("/api/v1/infra", axum::routing::put( put_handler ) );
-
-    // DELETE
-    let infra_router = infra_router.route("/api/v1/infra/:name", axum::routing::delete( delete_handler ) );
-
-    println!( "Endpoints ready" );
-
-    Router::new()
-        .merge( infra_router )
+    Router::<Infra>::new()
+        // .merge( create_routes() )
+        .nest( API_PATH, create_routes() )  // .nest() is like .merge() but with additional prepend
+        .with_state(shared_state)   // state must be provided just after router that consumes this state and must implement Clone trait
         .merge( crate::auth::create_auth_routers() )
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))
@@ -61,6 +49,27 @@ pub fn create_routes() -> Router {
         // ^ layers are executed from bottom to top ^
 }
 
+
+fn create_routes() -> Router::<Infra> {
+    let infra_router = Router::new();
+    
+    // POST
+    let infra_router = infra_router.route("/infra", axum::routing::post( post_handler ) );
+
+    // GET one
+    let infra_router = infra_router.route("/infra/:name", axum::routing::get( get_one_handler ) );
+
+    // GET all
+    let infra_router = infra_router.route("/infra", axum::routing::get( get_all_handler ) );
+
+    // PUT
+    let infra_router = infra_router.route("/infra", axum::routing::put( put_handler ) );
+
+    // DELETE
+    let infra_router = infra_router.route("/infra/:name", axum::routing::delete( delete_handler ) );
+
+    infra_router
+}
 
 fn serve_static_route() -> Router {
     // STATIC RESOURCE EXAMPLE: http://127.0.0.1:8080/src/main.rs - we can serve any static resource like .jpg or .txt
@@ -87,11 +96,11 @@ async fn main_response_mapper( res: Response ) -> Response {
         (status = 409, description = "Infra object already exists")
     )
 )]
-async fn post_handler( Json(payload): Json<Infra> ) -> impl IntoResponse {
+// for POST handler State() must be as 1st param for some reasons, for other it may be add varying position
+async fn post_handler( State(shared_state): State<Infra>, Json(payload): Json<Infra> ) -> impl IntoResponse {
     println!( "POST request body: {payload:?}" );
 
     let conn = &mut crate::repository::get_connection();
-    
     let res = crate::service::create( payload, conn );
 
     match res {
@@ -111,7 +120,8 @@ async fn post_handler( Json(payload): Json<Infra> ) -> impl IntoResponse {
     )
 )]
 // PATH PARAM EXAMPLE: http://127.0.0.1:8080/api/v1/infra/airport
-async fn get_one_handler( Path(name): Path<String> ) -> impl IntoResponse {
+async fn get_one_handler( Path(name): Path<String>, State(shared_state): State<Infra> ) -> impl IntoResponse {
+    println!( "FROM SHARED STATE: {shared_state:?}" );
 
     let conn = &mut crate::repository::get_connection();
     let infra: Option<Infra> = crate::service::get_one( &name, conn);
@@ -132,7 +142,8 @@ async fn get_one_handler( Path(name): Path<String> ) -> impl IntoResponse {
         (status = 404, description = "No Infra objects in DB")
     )
 )]
-async fn get_all_handler() -> impl IntoResponse {
+async fn get_all_handler( State(shared_state): State<Infra> ) -> impl IntoResponse {
+    println!( "FROM SHARED STATE: {shared_state:?}" );
 
     let conn = &mut crate::repository::get_connection();
     let infras: Option<Vec<Infra>> = crate::service::get_all(conn);

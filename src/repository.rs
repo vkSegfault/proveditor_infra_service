@@ -38,7 +38,7 @@ pub fn get_connection<'a>() -> PgConnection {
     #[cfg(debug_assertions)]  // use localhost in debug for local development
     let host: &str = "localhost";
     #[cfg(not(debug_assertions))]
-    let host: &str = "postgresql";  // use Kuberenetes SVC to connect to Postgres in release
+    let host: &str = "postgresql";  // use Kuberenetes SVC name to connect to Postgres in release
     let port: &str = "5432";
     let db_name: &str = "mydb";
 

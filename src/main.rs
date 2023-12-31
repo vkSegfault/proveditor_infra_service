@@ -10,9 +10,9 @@ use std::net::SocketAddr;
 
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), ()> {
 
-    let infra_router = controller::create_routes();
+    let infra_router = controller::create_router();
 
     // use localhost in debug build
     #[cfg(debug_assertions)]
@@ -31,4 +31,5 @@ async fn main() {
 
     println!("Server shutdown");
 
+    Ok(())
 }
