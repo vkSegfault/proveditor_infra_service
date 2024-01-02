@@ -5,7 +5,8 @@ use axum::{response::{IntoResponse, Response}, http::StatusCode};
 #[derive(Debug)]
 pub enum Error {
     LoginFail,
-    NoAuthTokenCookie
+    NoAuthTokenCookie,
+    WrongAuthTokenFormat
 }
 
 impl IntoResponse for Error {

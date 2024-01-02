@@ -1,18 +1,37 @@
 use crate::error::{Error, Result};
 use serde::Deserialize;
-use axum::{Json, routing::post, Router};
+use axum::{Json, routing::post, routing::get, Router};
 use serde_json::{Value, json};
 use tower_cookies::{Cookies, Cookie};
 
 
 pub fn create_auth_routers() -> Router {
     Router::new()
-        .route("/api/v1/login", post(api_login) )
         .route("/api/v1/register", post(api_register) )
+        .route("/api/v1/login", post(api_login) )
+        .route("/api/v1/logout", get(api_logout) )
 }
+
+
+async fn api_register( payload: Json<UserPayload> ) -> Result<Json<Value>> {
+    // TODO: create new user and add to DB
+    // TODO! set success return body
+    let body = Json(json!({
+        "result" : {
+            "success": "auth cookie added"
+        }
+    }));
+
+    // todo!();
+
+    Ok(body)
+}
+
 
 // JSON extractor must be last param
 async fn api_login( cookies: Cookies, payload: Json<UserPayload> ) -> Result<Json<Value>> {
+    // TODO: we can login with previousluy created new user or with SSO
+
     println!("->> {:<12} - api_login", "HANDLER");
 
     // TODO - implement DB check if user exists
@@ -28,24 +47,22 @@ async fn api_login( cookies: Cookies, payload: Json<UserPayload> ) -> Result<Jso
     // TODO! set success return body
     let body = Json(json!({
         "result" : {
-            "success": true
+            "success": "auth cookie removed"
         }
     }));
-
-    // todo!();
 
     Ok(body)
 }
 
-async fn api_register( payload: Json<UserPayload> ) -> Result<Json<Value>> {
-    // TODO! set success return body
+async fn api_logout( cookies: Cookies ) -> Result<Json<Value>> {
+
+    cookies.remove( Cookie::named(crate::auth::AUTH_TOKEN) );
+
     let body = Json(json!({
         "result" : {
             "success": true
         }
     }));
-
-    // todo!();
 
     Ok(body)
 }
