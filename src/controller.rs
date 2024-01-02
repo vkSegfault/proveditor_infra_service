@@ -215,7 +215,7 @@ async fn delete_handler( Path(name): Path<String> ) -> impl IntoResponse {
 
 
 // LOGGING
-async fn logging_middleware(req: Request<Body>, next: Next<Body>) -> Response {
+async fn logging_middleware(req: Request<Body>, next: Next) -> Response {
     println!( "### LOGGER ### Received a {} request to {}", req.method(), req.uri() );
     next.run(req).await
 }

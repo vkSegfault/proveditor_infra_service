@@ -1,10 +1,10 @@
-use axum::{response::Response, http::Request, middleware::Next};
+use axum::{response::Response, http::Request, middleware::Next, body::Body};
 use lazy_regex::regex_captures;
 use tower_cookies::Cookies;
 use crate::error::Error;
 
 
-pub async fn mw_require_auth<T>( cookies: Cookies, req: Request<T>, next: Next<T> ) -> Result<Response, Error>  {
+pub async fn mw_require_auth( cookies: Cookies, req: Request<Body>, next: Next ) -> Result<Response, Error>  {
 
     let auth_token = cookies.get( crate::auth::AUTH_TOKEN ).map(|c| c.value().to_string());
     

@@ -47,7 +47,7 @@ async fn api_login( cookies: Cookies, payload: Json<UserPayload> ) -> Result<Jso
     // TODO! set success return body
     let body = Json(json!({
         "result" : {
-            "success": "auth cookie removed"
+            "success": "auth cookie added"
         }
     }));
 
@@ -56,11 +56,11 @@ async fn api_login( cookies: Cookies, payload: Json<UserPayload> ) -> Result<Jso
 
 async fn api_logout( cookies: Cookies ) -> Result<Json<Value>> {
 
-    cookies.remove( Cookie::named(crate::auth::AUTH_TOKEN) );
+    cookies.remove( Cookie::from(crate::auth::AUTH_TOKEN) );
 
     let body = Json(json!({
         "result" : {
-            "success": true
+            "success": "auth cookie removed"
         }
     }));
 
