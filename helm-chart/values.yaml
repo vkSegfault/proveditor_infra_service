@@ -10,6 +10,7 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
 imageCredentials:
+  name: docker-registry-secret
   registry: 127.0.0.1:5000
   username: user
   password: pass
