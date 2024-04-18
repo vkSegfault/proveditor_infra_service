@@ -28,6 +28,7 @@ async fn api_register( payload: Json<UserPayload> ) -> Result<Json<Value>> {
 }
 
 
+// TEST: curl -X POST -i http://0.0.0.0:32768/api/v1/login -H 'Content-Type: application/json' -d '{"username":"user","password":"pass"}'
 // JSON extractor must be last param
 async fn api_login( cookies: Cookies, payload: Json<UserPayload> ) -> Result<Json<Value>> {
     // TODO: we can login with previousluy created new user or with SSO
