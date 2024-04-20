@@ -5,6 +5,13 @@ use serde_json::{Value, json};
 use tower_cookies::{Cookies, Cookie};
 
 
+#[derive(Debug, Deserialize)]
+struct UserPayload {
+    username: String,
+    password: String
+}
+
+
 pub fn create_auth_routers() -> Router {
     Router::new()
         .route("/api/v1/register", post(api_register) )
@@ -66,10 +73,4 @@ async fn api_logout( cookies: Cookies ) -> Result<Json<Value>> {
     }));
 
     Ok(body)
-}
-
-#[derive(Debug, Deserialize)]
-struct UserPayload {
-    username: String,
-    password: String
 }

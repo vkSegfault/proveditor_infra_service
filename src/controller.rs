@@ -32,7 +32,8 @@ pub fn create_router() -> Router {
     let cors = CorsLayer::new().allow_origin(Any);
 
     // route_layer allows to only add our custom middleware for these particulare routes
-    let routes = create_routes().route_layer( middleware::from_fn( crate::auth::mw_require_auth::mw_require_auth ) );
+    let routes_with_auth = create_routes().route_layer( middleware::from_fn( crate::auth::mw_require_auth::mw_require_auth ) );
+    let routes = create_routes();
 
     let shared_state = Infra { name: String::from("State"), infra_modifier: Some(6.66), price: Some(666) };
 
@@ -40,14 +41,16 @@ pub fn create_router() -> Router {
         // .merge( create_routes() )
         .nest( API_PATH, routes )  // .nest() is like .merge() but with additional prepend
         .with_state(shared_state)   // state must be provided just after router that consumes this state and must implement Clone trait
-        .merge( crate::auth::routes::create_auth_routers() )
+        // disable login requirement for K8s service
+        // .merge( crate::auth::routes::create_auth_routers() )
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))
         .merge(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))
         .layer(cors)
         .layer(from_fn(logging_middleware))
         .layer(middleware::map_response(main_response_mapper))
-        .layer(CookieManagerLayer::new())  // we can set new cookies anywhere in the code (here we set it up in auth.rs)
+        // disable cookies for K8s service
+        // .layer(CookieManagerLayer::new())  // we can set new cookies anywhere in the code (here we set it up in auth.rs)
         .fallback_service( serve_static_route() )  // if user provided endpoint that deosn't exists fallback to this static resource
         // ^ layers are executed from bottom to top ^
 }
